@@ -1,0 +1,51 @@
+# Defaults — overridden per env via the ArgoCD Application's helm.parameters.
+nameOverride: ""
+
+image:
+  repository: us-central1-docker.pkg.dev/REPLACE/docker/account-service
+  tag: ""           # set by CI to the immutable git SHA tag.
+  pullPolicy: IfNotPresent
+
+# GSA email — emitted by Terraform output workload_identity_sa_emails["account-service"].
+gsaEmail: REPLACE
+
+# Cloud SQL Auth Proxy sidecar talks to this instance.
+cloudSql:
+  instanceConnectionName: REPLACE   # e.g. my-project:us-central1:fintech-dev-pg-abcd
+  proxyImage: gcr.io/cloud-sql-connectors/cloud-sql-proxy:2.10.1
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      memory: 256Mi
+
+replicaCount: 2
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    memory: 512Mi
+
+service:
+  port: 80
+  targetPort: 8080
+
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 70
+
+podDisruptionBudget:
+  minAvailable: 1
+
+# VirtualService binds a path on the public ingress gateway to this service.
+virtualService:
+  enabled: true
+  gateway: asm-gateways/public-gateway
+  hosts:
+    - "*"
+  pathPrefix: /accounts

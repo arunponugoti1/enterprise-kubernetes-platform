@@ -1,0 +1,47 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: account-service
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+  annotations:
+    # Land after baseline (wave 0) and mesh (wave 10).
+    argocd.argoproj.io/sync-wave: "20"
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/arun-territory/demo-live-project.git
+    targetRevision: main
+    path: account-service/chart
+    helm:
+      releaseName: account-service
+      # CI bumps image.tag here. The other values come from Terraform outputs
+      # and should be filled in once at bootstrap time (or wired via an Argo
+      # ApplicationSet that templates them per-env).
+      parameters:
+        - name: image.repository
+          value: REPLACE-WITH-AR-URL/account-service
+        - name: image.tag
+          value: "0.1.0"
+        - name: gsaEmail
+          value: REPLACE-WITH-GSA-EMAIL
+        - name: cloudSql.instanceConnectionName
+          value: REPLACE-WITH-INSTANCE-CONNECTION-NAME
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: account-service
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=false   # Terraform owns the namespace.
+      - ServerSideApply=true
+      - ApplyOutOfSyncOnly=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 10s
+        factor: 2
+        maxDuration: 5m
