@@ -1,0 +1,3 @@
+project_id = "fintech-uat"
+region     = "us-central1"
+env        = "uat"

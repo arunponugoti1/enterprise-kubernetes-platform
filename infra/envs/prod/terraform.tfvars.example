@@ -1,0 +1,3 @@
+project_id = "fintech-prod"
+region     = "us-central1"
+env        = "prod"
