@@ -1,0 +1,24 @@
+# Default-deny AuthorizationPolicy per app namespace. With no `rules`, Istio
+# rejects all requests; subsequent ALLOW policies in the same namespace open
+# specific paths.
+---
+apiVersion: security.istio.io/v1
+kind: AuthorizationPolicy
+metadata:
+  name: default-deny
+  namespace: account-service
+spec: {}
+---
+apiVersion: security.istio.io/v1
+kind: AuthorizationPolicy
+metadata:
+  name: default-deny
+  namespace: transaction-service
+spec: {}
+---
+apiVersion: security.istio.io/v1
+kind: AuthorizationPolicy
+metadata:
+  name: default-deny
+  namespace: notification-service
+spec: {}

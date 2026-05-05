@@ -16,6 +16,8 @@ locals {
     "pubsub.googleapis.com",
     "meshconfig.googleapis.com",
     "mesh.googleapis.com",
+    "gkehub.googleapis.com",
+    "anthos.googleapis.com",
     "dns.googleapis.com",
     "binaryauthorization.googleapis.com",
     "containeranalysis.googleapis.com",
@@ -234,4 +236,20 @@ resource "google_pubsub_subscription_iam_member" "notification_subscriber" {
   member       = "serviceAccount:${module.wi_notification_service.email}"
 
   depends_on = [module.pubsub_transactions]
+}
+
+# ---------------------------------------------------------------------------
+# Phase 3: Managed Anthos Service Mesh (ASM)
+# ---------------------------------------------------------------------------
+
+module "asm" {
+  source = "../../modules/asm"
+
+  project_id       = var.project_id
+  cluster_id       = module.gke.cluster_id
+  cluster_location = var.region
+  membership_id    = module.gke.cluster_name
+  channel          = "regular"
+
+  depends_on = [module.apis, module.gke]
 }

@@ -42,3 +42,12 @@ output "pubsub_transactions_topic" {
 output "pubsub_transactions_subscription" {
   value = module.pubsub_transactions.subscription_ids
 }
+
+output "asm_membership_id" {
+  value = module.asm.membership_id
+}
+
+output "asm_revision_label" {
+  description = "Use this as the istio.io/rev label on app namespaces (overrides istio-injection: enabled for managed ASM)."
+  value       = module.asm.control_plane_revision_label
+}

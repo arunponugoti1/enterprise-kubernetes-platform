@@ -1,0 +1,112 @@
+# In-namespace ingress gateway. Managed ASM injects the gateway proxy into pods
+# that have the inject.istio.io/templates: gateway annotation; the istio-proxy
+# image: auto placeholder is rewritten by the injector.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: asm-ingressgateway
+  namespace: asm-gateways
+  labels:
+    app: asm-ingressgateway
+    istio: ingressgateway
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: asm-ingressgateway
+      istio: ingressgateway
+  template:
+    metadata:
+      annotations:
+        inject.istio.io/templates: gateway
+      labels:
+        app: asm-ingressgateway
+        istio: ingressgateway
+    spec:
+      serviceAccountName: asm-ingressgateway
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1337
+        runAsGroup: 1337
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: istio-proxy
+          image: auto
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 2000m
+              memory: 1Gi
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: topology.kubernetes.io/zone
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              app: asm-ingressgateway
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: asm-ingressgateway
+  namespace: asm-gateways
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: asm-ingressgateway
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: asm-ingressgateway
+  namespace: asm-gateways
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: asm-ingressgateway
+  minReplicas: 2
+  maxReplicas: 10
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 70
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: asm-ingressgateway
+  namespace: asm-gateways
+  annotations:
+    # External LB by default; switch to "Internal" via per-env overlay if you
+    # only want a private endpoint behind Cloud Armor / Cloud Load Balancer.
+    cloud.google.com/load-balancer-type: External
+spec:
+  type: LoadBalancer
+  selector:
+    app: asm-ingressgateway
+    istio: ingressgateway
+  ports:
+    - name: status-port
+      port: 15021
+      targetPort: 15021
+    - name: http2
+      port: 80
+      targetPort: 8080
+    - name: https
+      port: 443
+      targetPort: 8443

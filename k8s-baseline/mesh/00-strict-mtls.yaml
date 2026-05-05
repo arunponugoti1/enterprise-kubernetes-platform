@@ -1,0 +1,10 @@
+# Mesh-wide STRICT mTLS. Lives in the istio-system namespace because that
+# scope makes it apply to every workload in the mesh.
+apiVersion: security.istio.io/v1
+kind: PeerAuthentication
+metadata:
+  name: default
+  namespace: istio-system
+spec:
+  mtls:
+    mode: STRICT

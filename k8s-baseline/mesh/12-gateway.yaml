@@ -1,0 +1,29 @@
+# Istio Gateway resource — terminates TLS at the ingress gateway pods above.
+# The TLS secret `ingress-cert` must be created out-of-band (or via cert-manager
+# / Google-managed cert) before traffic flows on 443.
+apiVersion: networking.istio.io/v1
+kind: Gateway
+metadata:
+  name: public-gateway
+  namespace: asm-gateways
+spec:
+  selector:
+    istio: ingressgateway
+  servers:
+    - port:
+        number: 80
+        name: http
+        protocol: HTTP
+      hosts:
+        - "*"
+      tls:
+        httpsRedirect: true
+    - port:
+        number: 443
+        name: https
+        protocol: HTTPS
+      hosts:
+        - "*"
+      tls:
+        mode: SIMPLE
+        credentialName: ingress-cert

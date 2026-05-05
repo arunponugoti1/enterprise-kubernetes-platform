@@ -1,0 +1,91 @@
+# Call-graph allow-list. Principals are derived from the workload's KSA via
+# mTLS identity: spiffe://cluster.local/ns/<namespace>/sa/<ksa>. Sidecars must
+# be injected (managed ASM revision label on the namespace) for these to apply.
+#
+# Edges (target <- source):
+#   account-service       <- api-gateway, transaction-service
+#   transaction-service   <- api-gateway
+#   notification-service  <- (none from in-cluster; only Pub/Sub pulls)
+#
+# api-gateway namespace/SA does not exist yet (Phase 6); the rule simply
+# matches nothing until that workload is deployed.
+---
+apiVersion: security.istio.io/v1
+kind: AuthorizationPolicy
+metadata:
+  name: allow-callers
+  namespace: account-service
+spec:
+  action: ALLOW
+  selector:
+    matchLabels:
+      app: account-service
+  rules:
+    - from:
+        - source:
+            principals:
+              - "cluster.local/ns/api-gateway/sa/api-gateway"
+              - "cluster.local/ns/transaction-service/sa/transaction-service"
+      to:
+        - operation:
+            methods: ["GET", "POST", "PUT", "PATCH", "DELETE"]
+---
+apiVersion: security.istio.io/v1
+kind: AuthorizationPolicy
+metadata:
+  name: allow-callers
+  namespace: transaction-service
+spec:
+  action: ALLOW
+  selector:
+    matchLabels:
+      app: transaction-service
+  rules:
+    - from:
+        - source:
+            principals:
+              - "cluster.local/ns/api-gateway/sa/api-gateway"
+      to:
+        - operation:
+            methods: ["GET", "POST", "PUT", "PATCH", "DELETE"]
+---
+# Health-probe exception for all three services so kubelet/GKE health checks
+# (which arrive without an mTLS identity) don't get rejected.
+apiVersion: security.istio.io/v1
+kind: AuthorizationPolicy
+metadata:
+  name: allow-health-probes
+  namespace: account-service
+spec:
+  action: ALLOW
+  rules:
+    - to:
+        - operation:
+            paths: ["/healthz", "/readyz", "/livez"]
+            methods: ["GET"]
+---
+apiVersion: security.istio.io/v1
+kind: AuthorizationPolicy
+metadata:
+  name: allow-health-probes
+  namespace: transaction-service
+spec:
+  action: ALLOW
+  rules:
+    - to:
+        - operation:
+            paths: ["/healthz", "/readyz", "/livez"]
+            methods: ["GET"]
+---
+apiVersion: security.istio.io/v1
+kind: AuthorizationPolicy
+metadata:
+  name: allow-health-probes
+  namespace: notification-service
+spec:
+  action: ALLOW
+  rules:
+    - to:
+        - operation:
+            paths: ["/healthz", "/readyz", "/livez"]
+            methods: ["GET"]
