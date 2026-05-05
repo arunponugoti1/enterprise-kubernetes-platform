@@ -51,3 +51,11 @@ output "asm_revision_label" {
   description = "Use this as the istio.io/rev label on app namespaces (overrides istio-injection: enabled for managed ASM)."
   value       = module.asm.control_plane_revision_label
 }
+
+output "argocd_namespace" {
+  value = module.argocd.namespace
+}
+
+output "argocd_repo_server_gsa" {
+  value = module.argocd.repo_server_gsa_email
+}

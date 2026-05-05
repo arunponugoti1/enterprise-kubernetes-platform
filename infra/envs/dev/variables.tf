@@ -51,3 +51,14 @@ variable "sql_deletion_protection" {
   type    = bool
   default = false
 }
+
+variable "gitops_repo_url" {
+  type        = string
+  description = "HTTPS or SSH URL of the GitOps manifests repository ArgoCD reconciles from."
+}
+
+variable "gitops_target_revision" {
+  type        = string
+  default     = "main"
+  description = "Branch, tag, or commit ArgoCD tracks for the root Application."
+}

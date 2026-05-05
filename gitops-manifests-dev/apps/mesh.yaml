@@ -1,0 +1,37 @@
+# Reconciles mesh-level resources (PeerAuthentication, ingress gateway,
+# AuthorizationPolicies) after the baseline namespaces exist.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: mesh
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+  annotations:
+    # Apply after baseline so target namespaces (account-service etc.) exist
+    # before AuthorizationPolicies land in them.
+    argocd.argoproj.io/sync-wave: "10"
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/arun-territory/demo-live-project.git
+    targetRevision: main
+    path: k8s-baseline/mesh
+    directory:
+      recurse: false
+  destination:
+    server: https://kubernetes.default.svc
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
+      - ApplyOutOfSyncOnly=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 10s
+        factor: 2
+        maxDuration: 5m
