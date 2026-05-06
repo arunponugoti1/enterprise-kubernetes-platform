@@ -1,0 +1,146 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "SERVICE_NAME.name" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "SERVICE_NAME.labels" . | nindent 4 }}
+spec:
+  {{- if not .Values.autoscaling.enabled }}
+  replicas: {{ .Values.replicaCount }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "SERVICE_NAME.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "SERVICE_NAME.selectorLabels" . | nindent 8 }}
+    spec:
+      serviceAccountName: {{ include "SERVICE_NAME.name" . }}
+      automountServiceAccountToken: false
+
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+
+      {{- if .Values.topologySpread.enabled }}
+      topologySpreadConstraints:
+        - maxSkew: {{ .Values.topologySpread.maxSkew }}
+          topologyKey: topology.kubernetes.io/zone
+          whenUnsatisfiable: {{ .Values.topologySpread.whenUnsatisfiable }}
+          labelSelector:
+            matchLabels:
+              {{- include "SERVICE_NAME.selectorLabels" . | nindent 14 }}
+      {{- end }}
+
+      volumes:
+        - name: tmp
+          emptyDir: {}
+        {{- if .Values.cloudSql.enabled }}
+        - name: cloudsql-socket
+          emptyDir: {}
+        {{- end }}
+
+      containers:
+        - name: SERVICE_NAME
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            runAsUser: 1000
+            capabilities:
+              drop: [ALL]
+
+          ports:
+            - name: http
+              containerPort: {{ .Values.service.targetPort }}
+              protocol: TCP
+
+          {{- if .Values.envFrom.secretName }}
+          envFrom:
+            - secretRef:
+                name: {{ .Values.envFrom.secretName }}
+          {{- end }}
+
+          {{- if .Values.cloudSql.enabled }}
+          env:
+            - name: DB_SOCKET_DIR
+              value: /cloudsql
+          {{- end }}
+
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+            {{- if .Values.cloudSql.enabled }}
+            - name: cloudsql-socket
+              mountPath: /cloudsql
+            {{- end }}
+
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 15
+            failureThreshold: 3
+
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            failureThreshold: 3
+
+        {{- if .Values.cloudSql.enabled }}
+        - name: cloud-sql-proxy
+          image: {{ .Values.cloudSql.proxyImage }}
+          args:
+            - "--structured-logs"
+            - "--private-ip"
+            - "--health-check"
+            - "--http-port=9090"
+            - "--unix-socket=/cloudsql"
+            - "{{ .Values.cloudSql.instanceConnectionName }}"
+
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            runAsUser: 65532
+            capabilities:
+              drop: [ALL]
+
+          volumeMounts:
+            - name: cloudsql-socket
+              mountPath: /cloudsql
+            - name: tmp
+              mountPath: /tmp
+
+          resources:
+            {{- toYaml .Values.cloudSql.resources | nindent 12 }}
+
+          livenessProbe:
+            httpGet:
+              path: /liveness
+              port: 9090
+            initialDelaySeconds: 10
+            periodSeconds: 15
+
+          readinessProbe:
+            httpGet:
+              path: /readiness
+              port: 9090
+            initialDelaySeconds: 5
+            periodSeconds: 10
+        {{- end }}

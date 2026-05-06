@@ -1,0 +1,64 @@
+# Default-deny all ingress and egress, then allow only what's needed.
+# Add service-specific rules below or in a separate file.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny
+  namespace: {{ .Release.Namespace }}
+spec:
+  podSelector: {}
+  policyTypes: [Ingress, Egress]
+---
+# Allow DNS egress (CoreDNS)
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-dns-egress
+  namespace: {{ .Release.Namespace }}
+spec:
+  podSelector: {}
+  policyTypes: [Egress]
+  egress:
+    - ports:
+        - port: 53
+          protocol: UDP
+        - port: 53
+          protocol: TCP
+---
+# Allow egress to Google private APIs (Private Google Access)
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-google-apis-egress
+  namespace: {{ .Release.Namespace }}
+spec:
+  podSelector: {}
+  policyTypes: [Egress]
+  egress:
+    - to:
+        - ipBlock:
+            cidr: 199.36.153.8/30
+        - ipBlock:
+            cidr: 199.36.153.4/30
+      ports:
+        - port: 443
+          protocol: TCP
+---
+# Allow Istio sidecar communication
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-istio-sidecar
+  namespace: {{ .Release.Namespace }}
+spec:
+  podSelector: {}
+  policyTypes: [Ingress, Egress]
+  ingress:
+    - ports:
+        - port: 15008   # HBONE (ASM)
+        - port: 15010   # Istiod gRPC (plaintext)
+        - port: 15012   # Istiod gRPC (TLS)
+  egress:
+    - ports:
+        - port: 15012   # Istiod
+        - port: 443

@@ -1,0 +1,62 @@
+nameOverride: ""
+
+image:
+  repository: REPLACE-WITH-AR-URL/SERVICE_NAME
+  tag: ""           # bumped by CI
+  pullPolicy: IfNotPresent
+
+# GSA email from Terraform output module.service_baseline["SERVICE_NAME"].gsa_email
+gsaEmail: REPLACE
+
+replicaCount: 2
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    memory: 512Mi
+
+service:
+  port: 80
+  targetPort: 8080
+
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 70
+
+podDisruptionBudget:
+  minAvailable: 1
+
+# Set enabled=true and fill instanceConnectionName for services that need Cloud SQL.
+cloudSql:
+  enabled: false
+  instanceConnectionName: REPLACE   # project:region:instance
+  proxyImage: gcr.io/cloud-sql-connectors/cloud-sql-proxy:2.10.1
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      memory: 256Mi
+
+# VirtualService — set pathPrefix to expose on the ingress gateway.
+virtualService:
+  enabled: false
+  gateway: asm-gateways/public-gateway
+  hosts:
+    - "*"
+  pathPrefix: /SERVICE_NAME
+
+# Extra environment variables loaded from a Kubernetes Secret.
+# Set secretName to the name of the Secret Terraform creates in this namespace.
+envFrom:
+  secretName: ""   # e.g. SERVICE_NAME-secrets
+
+# Topology spread — keep pods across zones.
+topologySpread:
+  enabled: true
+  maxSkew: 1
+  whenUnsatisfiable: DoNotSchedule
