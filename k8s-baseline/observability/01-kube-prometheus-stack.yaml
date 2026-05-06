@@ -1,0 +1,168 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: kube-prometheus-stack
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  project: default
+  source:
+    repoURL: https://prometheus-community.github.io/helm-charts
+    chart: kube-prometheus-stack
+    targetRevision: "58.2.2"
+    helm:
+      releaseName: kube-prometheus-stack
+      valuesObject:
+        nameOverride: ""
+        fullnameOverride: ""
+
+        # Disable components already provided by GKE Managed Prometheus
+        prometheusOperator:
+          enabled: true
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              memory: 256Mi
+          securityContext:
+            runAsNonRoot: true
+            seccompProfile:
+              type: RuntimeDefault
+          containerSecurityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]
+
+        prometheus:
+          enabled: false  # GKE Managed Prometheus handles scraping
+
+        alertmanager:
+          enabled: false  # Cloud Monitoring handles alerting
+
+        # kube-state-metrics — minimal resource profile
+        kube-state-metrics:
+          enabled: true
+          resources:
+            requests:
+              cpu: 10m
+              memory: 64Mi
+            limits:
+              memory: 128Mi
+          securityContext:
+            runAsNonRoot: true
+            seccompProfile:
+              type: RuntimeDefault
+          containerSecurityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]
+
+        # node-exporter — DaemonSet for node-level metrics
+        prometheus-node-exporter:
+          enabled: true
+          resources:
+            requests:
+              cpu: 10m
+              memory: 32Mi
+            limits:
+              memory: 64Mi
+          securityContext:
+            runAsNonRoot: true
+            seccompProfile:
+              type: RuntimeDefault
+          containerSecurityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]
+          # Tolerations to run on all nodes including system nodes
+          tolerations:
+            - effect: NoSchedule
+              operator: Exists
+
+        grafana:
+          enabled: true
+          replicas: 1
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              memory: 512Mi
+
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 65534
+            fsGroup: 65534
+            seccompProfile:
+              type: RuntimeDefault
+
+          containerSecurityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]
+
+          persistence:
+            enabled: false  # dashboards via ConfigMaps; state is ephemeral
+
+          # Load dashboards from ConfigMaps labelled grafana_dashboard=1
+          sidecar:
+            dashboards:
+              enabled: true
+              label: grafana_dashboard
+              labelValue: "1"
+              searchNamespace: ALL
+            datasources:
+              enabled: true
+
+          # Use GMP as the primary Prometheus datasource
+          additionalDataSources:
+            - name: Google Managed Prometheus
+              type: prometheus
+              url: https://monitoring.googleapis.com/v1/projects/PROJECT_ID/location/global/prometheus
+              access: proxy
+              jsonData:
+                httpMethod: POST
+                prometheusType: Prometheus
+
+          grafana.ini:
+            auth.anonymous:
+              enabled: false
+            security:
+              admin_user: admin
+              cookie_secure: true
+              strict_transport_security: true
+            server:
+              root_url: "%(protocol)s://%(domain)s/"
+
+          service:
+            type: ClusterIP
+            port: 80
+
+          ingress:
+            enabled: false  # exposed via Istio VirtualService
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: monitoring
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=false
+      - ServerSideApply=true
+      - ApplyOutOfSyncOnly=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 10s
+        factor: 2
+        maxDuration: 5m

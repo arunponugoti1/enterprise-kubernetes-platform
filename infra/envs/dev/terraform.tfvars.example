@@ -1,3 +1,12 @@
 project_id = "fintech-dev"
 region     = "us-central1"
 env        = "dev"
+
+# Monitoring
+alert_email        = "platform-oncall@example.com"
+slack_channel_name = "#fintech-alerts"   # leave empty string "" to disable
+# slack_auth_token set via TF_VAR_slack_auth_token env var
+
+# GitOps
+gitops_repo_url        = "https://github.com/your-org/demo-live-project"
+gitops_target_revision = "main"

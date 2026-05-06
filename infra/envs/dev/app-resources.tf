@@ -93,3 +93,24 @@ resource "kubernetes_secret_v1" "api_gateway" {
     TRANSACTION_SERVICE_URL = "http://transaction-service.transaction-service.svc.cluster.local"
   }
 }
+
+# ---------------------------------------------------------------------------
+# ArgoCD notifications: Slack + email credentials
+# Populates the argocd-notifications-secret expected by the notifications CM.
+# ---------------------------------------------------------------------------
+
+resource "kubernetes_secret_v1" "argocd_notifications" {
+  metadata {
+    name      = "argocd-notifications-secret"
+    namespace = "argocd"
+  }
+
+  type = "Opaque"
+
+  data = {
+    slack-token    = var.slack_auth_token
+    email-username = var.alert_email
+  }
+
+  depends_on = [module.argocd]
+}

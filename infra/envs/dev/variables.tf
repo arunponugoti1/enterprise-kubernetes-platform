@@ -52,6 +52,24 @@ variable "sql_deletion_protection" {
   default = false
 }
 
+variable "alert_email" {
+  type        = string
+  description = "Email for Cloud Monitoring alert notifications."
+}
+
+variable "slack_channel_name" {
+  type        = string
+  default     = ""
+  description = "Slack channel for alerts (e.g. #fintech-alerts). Leave empty to disable."
+}
+
+variable "slack_auth_token" {
+  type        = string
+  sensitive   = true
+  default     = ""
+  description = "Slack bot OAuth token. Required when slack_channel_name is set."
+}
+
 variable "gitops_repo_url" {
   type        = string
   description = "HTTPS or SSH URL of the GitOps manifests repository ArgoCD reconciles from."
