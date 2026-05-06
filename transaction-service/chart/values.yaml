@@ -1,0 +1,40 @@
+image:
+  repository: us-central1-docker.pkg.dev/REPLACE/docker/transaction-service
+  tag: ""
+  pullPolicy: IfNotPresent
+
+gsaEmail: REPLACE
+
+# Fully-qualified Pub/Sub topic name, e.g. projects/my-proj/topics/fintech-dev-transactions
+pubsubTopicId: REPLACE
+
+accountServiceUrl: http://account-service.account-service.svc.cluster.local
+
+replicaCount: 2
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    memory: 512Mi
+
+service:
+  port: 80
+  targetPort: 8080
+
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 70
+
+podDisruptionBudget:
+  minAvailable: 1
+
+virtualService:
+  enabled: true
+  gateway: asm-gateways/public-gateway
+  hosts:
+    - "*"
+  pathPrefix: /transactions

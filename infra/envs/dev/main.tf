@@ -220,6 +220,19 @@ module "wi_notification_service" {
   ]
 }
 
+module "wi_api_gateway" {
+  source = "../../modules/workload-identity-sa"
+
+  project_id                 = var.project_id
+  name                       = "svc-api-gw-${var.env}"
+  kubernetes_namespace       = "api-gateway"
+  kubernetes_service_account = "api-gateway"
+
+  project_roles = [
+    "roles/cloudtrace.agent",
+  ]
+}
+
 # Topic publisher: transaction-service publishes events.
 resource "google_pubsub_topic_iam_member" "txn_publisher" {
   project = var.project_id

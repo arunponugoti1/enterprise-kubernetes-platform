@@ -1,0 +1,43 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: notification-service
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+  annotations:
+    argocd.argoproj.io/sync-wave: "20"
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/arun-territory/demo-live-project.git
+    targetRevision: main
+    path: notification-service/chart
+    helm:
+      releaseName: notification-service
+      parameters:
+        - name: image.repository
+          value: REPLACE-WITH-AR-URL/notification-service
+        - name: image.tag
+          value: "0.1.0"
+        - name: gsaEmail
+          value: REPLACE-WITH-GSA-EMAIL
+        - name: pubsubSubscriptionId
+          value: REPLACE-WITH-SUBSCRIPTION-ID
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: notification-service
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=false
+      - ServerSideApply=true
+      - ApplyOutOfSyncOnly=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 10s
+        factor: 2
+        maxDuration: 5m

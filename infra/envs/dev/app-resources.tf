@@ -32,9 +32,64 @@ resource "kubernetes_secret_v1" "account_service_db" {
   type = "Opaque"
 
   data = {
-    DB_USER            = "app_account"
-    DB_NAME            = "accounts"
-    DB_PASSWORD        = module.cloud_sql.user_passwords["app_account"]
+    DB_USER                  = "app_account"
+    DB_NAME                  = "accounts"
+    DB_PASSWORD              = module.cloud_sql.user_passwords["app_account"]
     INSTANCE_CONNECTION_NAME = module.cloud_sql.connection_name
+  }
+}
+
+# ---------------------------------------------------------------------------
+# Remaining app namespaces (Terraform owns all app ns so K8s secrets below
+# can be created without racing ArgoCD's namespace reconciliation).
+# ---------------------------------------------------------------------------
+
+locals {
+  app_namespaces = toset([
+    "transaction-service",
+    "notification-service",
+    "api-gateway",
+    "frontend",
+  ])
+}
+
+resource "kubernetes_namespace_v1" "app" {
+  for_each = local.app_namespaces
+
+  metadata {
+    name = each.key
+    labels = {
+      "istio.io/rev"                       = module.asm.control_plane_revision_label
+      "pod-security.kubernetes.io/enforce" = "restricted"
+      "pod-security.kubernetes.io/audit"   = "restricted"
+      "pod-security.kubernetes.io/warn"    = "restricted"
+    }
+  }
+
+  depends_on = [module.asm]
+}
+
+# ---------------------------------------------------------------------------
+# api-gateway: JWT secret + upstream URLs
+# ---------------------------------------------------------------------------
+
+resource "random_password" "jwt_secret" {
+  length  = 64
+  special = false
+}
+
+resource "kubernetes_secret_v1" "api_gateway" {
+  metadata {
+    name      = "api-gateway-secrets"
+    namespace = kubernetes_namespace_v1.app["api-gateway"].metadata[0].name
+  }
+
+  type = "Opaque"
+
+  data = {
+    JWT_SECRET             = random_password.jwt_secret.result
+    JWT_TTL_SECONDS        = "3600"
+    ACCOUNT_SERVICE_URL    = "http://account-service.account-service.svc.cluster.local"
+    TRANSACTION_SERVICE_URL = "http://transaction-service.transaction-service.svc.cluster.local"
   }
 }

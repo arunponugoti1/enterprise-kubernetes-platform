@@ -1,0 +1,32 @@
+image:
+  repository: us-central1-docker.pkg.dev/REPLACE/docker/notification-service
+  tag: ""
+  pullPolicy: IfNotPresent
+
+gsaEmail: REPLACE
+
+# Fully-qualified Pub/Sub subscription name,
+# e.g. projects/my-proj/subscriptions/fintech-dev-transactions-notifications
+pubsubSubscriptionId: REPLACE
+
+replicaCount: 2
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 128Mi
+  limits:
+    memory: 256Mi
+
+service:
+  port: 80
+  targetPort: 8080
+
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 6
+  targetCPUUtilizationPercentage: 70
+
+podDisruptionBudget:
+  minAvailable: 1

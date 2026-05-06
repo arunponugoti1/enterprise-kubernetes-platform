@@ -1,0 +1,35 @@
+image:
+  repository: us-central1-docker.pkg.dev/REPLACE/docker/frontend
+  tag: ""
+  pullPolicy: IfNotPresent
+
+# nginx upstream for /api/* — full K8s DNS FQDN.
+apiGatewayUrl: http://api-gateway.api-gateway.svc.cluster.local
+
+replicaCount: 2
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 64Mi
+  limits:
+    memory: 256Mi
+
+service:
+  port: 80
+  targetPort: 8080
+
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 8
+  targetCPUUtilizationPercentage: 70
+
+podDisruptionBudget:
+  minAvailable: 1
+
+virtualService:
+  enabled: true
+  gateway: asm-gateways/public-gateway
+  hosts:
+    - "*"

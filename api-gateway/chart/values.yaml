@@ -1,0 +1,32 @@
+image:
+  repository: us-central1-docker.pkg.dev/REPLACE/docker/api-gateway
+  tag: ""
+  pullPolicy: IfNotPresent
+
+gsaEmail: REPLACE
+
+replicaCount: 2
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    memory: 512Mi
+
+service:
+  port: 80
+  targetPort: 8080
+
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 70
+
+podDisruptionBudget:
+  minAvailable: 1
+
+# api-gateway is reached via the frontend's nginx proxy — no direct VS on ingress.
+virtualService:
+  enabled: false

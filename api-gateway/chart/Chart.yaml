@@ -1,0 +1,6 @@
+apiVersion: v2
+name: api-gateway
+description: JWT-authenticated reverse proxy; rate-limits and forwards to upstream services.
+type: application
+version: 0.1.0
+appVersion: "0.1.0"

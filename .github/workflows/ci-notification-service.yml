@@ -1,0 +1,117 @@
+name: ci-notification-service
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "notification-service/**"
+      - ".github/workflows/ci-notification-service.yml"
+  pull_request:
+    paths:
+      - "notification-service/**"
+      - ".github/workflows/ci-notification-service.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  id-token: write
+  pull-requests: read
+
+env:
+  SERVICE: notification-service
+  IMAGE_REPO: ${{ vars.AR_HOST }}/${{ vars.AR_PROJECT }}/docker/notification-service
+  GITOPS_APP_FILE: gitops-manifests-dev/apps/services/notification-service.yaml
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: notification-service
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: notification-service/package.json
+      - run: npm install
+      - run: npm audit --omit=dev --audit-level=high
+
+  sast:
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: github/codeql-action/init@v3
+        with:
+          languages: javascript-typescript
+      - uses: github/codeql-action/analyze@v3
+
+  build-and-push:
+    needs: [test, sast]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    outputs:
+      image_tag: ${{ steps.meta.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: meta
+        run: echo "tag=$(git rev-parse --short=12 HEAD)" >> "$GITHUB_OUTPUT"
+      - uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ vars.WIF_PROVIDER }}
+          service_account: ${{ vars.CI_SERVICE_ACCOUNT }}
+      - uses: google-github-actions/setup-gcloud@v2
+      - run: gcloud auth configure-docker "${{ vars.AR_HOST }}" --quiet
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/build-push-action@v5
+        with:
+          context: notification-service
+          load: true
+          tags: ${{ env.IMAGE_REPO }}:${{ steps.meta.outputs.tag }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      - uses: aquasecurity/trivy-action@0.24.0
+        with:
+          image-ref: ${{ env.IMAGE_REPO }}:${{ steps.meta.outputs.tag }}
+          format: table
+          exit-code: 1
+          ignore-unfixed: true
+          vuln-type: os,library
+          severity: HIGH,CRITICAL
+      - run: docker push "${{ env.IMAGE_REPO }}:${{ steps.meta.outputs.tag }}"
+
+  deploy-to-dev:
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+      - name: Bump image tag in Argo Application
+        env:
+          NEW_TAG: ${{ needs.build-and-push.outputs.image_tag }}
+        run: |
+          python3 - <<'PY'
+          import os, re, pathlib
+          path = pathlib.Path(os.environ["GITOPS_APP_FILE"])
+          text = path.read_text()
+          text = re.sub(
+              r'(-\s*name:\s*image\.tag\s*\n\s*value:\s*)"[^"]*"',
+              rf'\1"{os.environ["NEW_TAG"]}"', text, count=1)
+          path.write_text(text)
+          PY
+      - name: Commit and push
+        env:
+          NEW_TAG: ${{ needs.build-and-push.outputs.image_tag }}
+        run: |
+          if git diff --quiet -- "$GITOPS_APP_FILE"; then exit 0; fi
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add "$GITOPS_APP_FILE"
+          git commit -m "ci(notification-service): bump image to ${NEW_TAG}"
+          git push origin HEAD:main

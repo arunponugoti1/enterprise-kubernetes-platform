@@ -22,3 +22,17 @@ metadata:
   name: default-deny
   namespace: notification-service
 spec: {}
+---
+apiVersion: security.istio.io/v1
+kind: AuthorizationPolicy
+metadata:
+  name: default-deny
+  namespace: api-gateway
+spec: {}
+---
+apiVersion: security.istio.io/v1
+kind: AuthorizationPolicy
+metadata:
+  name: default-deny
+  namespace: frontend
+spec: {}

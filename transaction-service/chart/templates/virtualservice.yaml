@@ -1,0 +1,25 @@
+{{- if .Values.virtualService.enabled }}
+apiVersion: networking.istio.io/v1
+kind: VirtualService
+metadata:
+  name: {{ include "transaction-service.name" . }}
+  namespace: {{ .Release.Namespace }}
+spec:
+  hosts: {{- toYaml .Values.virtualService.hosts | nindent 4 }}
+  gateways:
+    - {{ .Values.virtualService.gateway }}
+  http:
+    - match:
+        - uri:
+            prefix: {{ .Values.virtualService.pathPrefix }}
+      route:
+        - destination:
+            host: {{ include "transaction-service.name" . }}.{{ .Release.Namespace }}.svc.cluster.local
+            port:
+              number: {{ .Values.service.port }}
+      retries:
+        attempts: 3
+        perTryTimeout: 5s
+        retryOn: 5xx,reset,connect-failure,refused-stream
+      timeout: 15s
+{{- end }}

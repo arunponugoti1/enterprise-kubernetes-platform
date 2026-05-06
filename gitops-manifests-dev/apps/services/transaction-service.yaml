@@ -1,0 +1,45 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: transaction-service
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+  annotations:
+    argocd.argoproj.io/sync-wave: "20"
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/arun-territory/demo-live-project.git
+    targetRevision: main
+    path: transaction-service/chart
+    helm:
+      releaseName: transaction-service
+      parameters:
+        - name: image.repository
+          value: REPLACE-WITH-AR-URL/transaction-service
+        - name: image.tag
+          value: "0.1.0"
+        - name: gsaEmail
+          value: REPLACE-WITH-GSA-EMAIL
+        - name: pubsubTopicId
+          value: REPLACE-WITH-TOPIC-ID
+        - name: accountServiceUrl
+          value: http://account-service.account-service.svc.cluster.local
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: transaction-service
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=false
+      - ServerSideApply=true
+      - ApplyOutOfSyncOnly=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 10s
+        factor: 2
+        maxDuration: 5m

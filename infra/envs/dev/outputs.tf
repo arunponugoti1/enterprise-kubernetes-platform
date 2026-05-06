@@ -32,6 +32,7 @@ output "workload_identity_sa_emails" {
     "account-service"      = module.wi_account_service.email
     "transaction-service"  = module.wi_transaction_service.email
     "notification-service" = module.wi_notification_service.email
+    "api-gateway"          = module.wi_api_gateway.email
   }
 }
 

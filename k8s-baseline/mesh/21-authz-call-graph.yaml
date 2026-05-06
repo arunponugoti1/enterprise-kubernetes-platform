@@ -49,7 +49,48 @@ spec:
         - operation:
             methods: ["GET", "POST", "PUT", "PATCH", "DELETE"]
 ---
-# Health-probe exception for all three services so kubelet/GKE health checks
+# api-gateway: ingress from frontend (nginx proxy) and the ingress gateway.
+apiVersion: security.istio.io/v1
+kind: AuthorizationPolicy
+metadata:
+  name: allow-callers
+  namespace: api-gateway
+spec:
+  action: ALLOW
+  selector:
+    matchLabels:
+      app: api-gateway
+  rules:
+    - from:
+        - source:
+            principals:
+              - "cluster.local/ns/frontend/sa/frontend"
+              - "cluster.local/ns/asm-gateways/sa/asm-ingressgateway"
+      to:
+        - operation:
+            methods: ["GET", "POST", "PUT", "PATCH", "DELETE"]
+---
+# frontend: ingress from the ingress gateway only.
+apiVersion: security.istio.io/v1
+kind: AuthorizationPolicy
+metadata:
+  name: allow-callers
+  namespace: frontend
+spec:
+  action: ALLOW
+  selector:
+    matchLabels:
+      app: frontend
+  rules:
+    - from:
+        - source:
+            principals:
+              - "cluster.local/ns/asm-gateways/sa/asm-ingressgateway"
+      to:
+        - operation:
+            methods: ["GET", "HEAD"]
+---
+# Health-probe exception for all five services so kubelet/GKE health checks
 # (which arrive without an mTLS identity) don't get rejected.
 apiVersion: security.istio.io/v1
 kind: AuthorizationPolicy
@@ -88,4 +129,30 @@ spec:
     - to:
         - operation:
             paths: ["/healthz", "/readyz", "/livez"]
+            methods: ["GET"]
+---
+apiVersion: security.istio.io/v1
+kind: AuthorizationPolicy
+metadata:
+  name: allow-health-probes
+  namespace: api-gateway
+spec:
+  action: ALLOW
+  rules:
+    - to:
+        - operation:
+            paths: ["/healthz", "/readyz", "/livez"]
+            methods: ["GET"]
+---
+apiVersion: security.istio.io/v1
+kind: AuthorizationPolicy
+metadata:
+  name: allow-health-probes
+  namespace: frontend
+spec:
+  action: ALLOW
+  rules:
+    - to:
+        - operation:
+            paths: ["/healthz"]
             methods: ["GET"]
