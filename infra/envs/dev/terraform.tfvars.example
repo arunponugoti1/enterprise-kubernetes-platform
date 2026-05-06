@@ -2,6 +2,10 @@ project_id = "fintech-dev"
 region     = "us-central1"
 env        = "dev"
 
+# Hardening
+ci_service_account_email  = "ci-terraform@fintech-bootstrap.iam.gserviceaccount.com"
+binauthz_enforcement_mode = "DRYRUN_AUDIT_LOG_ONLY"
+
 # Monitoring
 alert_email        = "platform-oncall@example.com"
 slack_channel_name = "#fintech-alerts"   # leave empty string "" to disable

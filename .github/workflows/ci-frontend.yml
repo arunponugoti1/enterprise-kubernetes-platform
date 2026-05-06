@@ -70,6 +70,24 @@ jobs:
           severity: HIGH,CRITICAL
       - run: docker push "${{ env.IMAGE_REPO }}:${{ steps.meta.outputs.tag }}"
 
+      - name: Get image digest
+        id: digest
+        run: |
+          DIGEST=$(gcloud artifacts docker images describe \
+            "${{ env.IMAGE_REPO }}:${{ steps.meta.outputs.tag }}" \
+            --format='get(image_summary.digest)')
+          echo "value=${DIGEST}" >> "$GITHUB_OUTPUT"
+
+      - name: Attest image (Binary Authorization)
+        env:
+          ARTIFACT_URL: ${{ env.IMAGE_REPO }}@${{ steps.digest.outputs.value }}
+        run: |
+          gcloud container binauthz attestations sign-and-create \
+            --artifact-url="${ARTIFACT_URL}" \
+            --attestor="${{ vars.BINAUTHZ_ATTESTOR }}" \
+            --attestor-project="${{ vars.AR_PROJECT }}" \
+            --keyversion="${{ vars.BINAUTHZ_KEY_VERSION_ID }}"
+
   deploy-to-dev:
     needs: build-and-push
     runs-on: ubuntu-latest

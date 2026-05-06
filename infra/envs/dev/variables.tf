@@ -70,6 +70,17 @@ variable "slack_auth_token" {
   description = "Slack bot OAuth token. Required when slack_channel_name is set."
 }
 
+variable "ci_service_account_email" {
+  type        = string
+  description = "Email of the CI service account from the bootstrap project (used for Binary Authorization IAM grants)."
+}
+
+variable "binauthz_enforcement_mode" {
+  type        = string
+  default     = "DRYRUN_AUDIT_LOG_ONLY"
+  description = "Binary Authorization enforcement mode: DRYRUN_AUDIT_LOG_ONLY (dev) or ENFORCED_BLOCK_AND_AUDIT_LOG (prod)."
+}
+
 variable "gitops_repo_url" {
   type        = string
   description = "HTTPS or SSH URL of the GitOps manifests repository ArgoCD reconciles from."

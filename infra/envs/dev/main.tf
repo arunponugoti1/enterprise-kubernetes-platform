@@ -46,6 +46,7 @@ module "kms" {
     sql               = {}
     artifact-registry = {}
     pubsub            = {}
+    gcs               = {}
   }
 
   depends_on = [module.apis]

@@ -1,0 +1,16 @@
+# ZAP scan rules override file
+# Format: rule_id	IGNORE|WARN|FAIL	description
+#
+# Ignore informational/false-positive rules for internal fintech services.
+# See https://www.zaproxy.org/docs/alerts/ for rule IDs.
+
+# Anti-clickjacking — handled by Istio response headers
+10020	IGNORE	X-Frame-Options header missing
+# Server leaks version info — acceptable in internal dev
+10036	WARN	Server Leaks Version Information
+
+# CSP — configured per-service; baseline may not have headers during scan
+10038	WARN	Content Security Policy (CSP) Header Not Set
+
+# Strict-Transport-Security — present in prod via Istio; may be absent in baseline scan
+10035	WARN	Strict-Transport-Security Header Not Set

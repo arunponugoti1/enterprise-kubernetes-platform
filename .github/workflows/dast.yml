@@ -1,0 +1,90 @@
+name: dast
+
+on:
+  # Run after deploy-to-dev completes on any service, or trigger manually
+  workflow_dispatch:
+    inputs:
+      target_url:
+        description: "Base URL of the deployed frontend/API (e.g. https://dev.fintech.example.com)"
+        required: true
+        type: string
+  # Nightly scheduled scan against dev
+  schedule:
+    - cron: "0 3 * * *"
+
+permissions:
+  contents: read
+  security-events: write  # upload SARIF to GitHub Security tab
+
+env:
+  # Override in workflow_dispatch; nightly scan uses repo variable
+  TARGET_URL: ${{ inputs.target_url || vars.DEV_APP_URL }}
+
+jobs:
+  zap-baseline:
+    name: OWASP ZAP Baseline Scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: ZAP Baseline Scan
+        uses: zaproxy/action-baseline@v0.12.0
+        with:
+          target: ${{ env.TARGET_URL }}
+          # Fail build on HIGH alerts; flag MEDIUM as warnings
+          fail_action: true
+          allow_issue_writing: false
+          rules_file_name: .zap/rules.tsv
+          cmd_options: >-
+            -z "-config scanner.threadPerHost=5"
+            -z "-config connection.timeoutInSecs=15"
+
+      - name: Upload ZAP SARIF report
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: zap_scan_report.sarif
+          category: dast-zap
+
+      - name: Upload ZAP HTML report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: zap-report-${{ github.run_id }}
+          path: |
+            zap_scan_report.html
+            zap_scan_report.json
+          retention-days: 30
+
+  zap-api-scan:
+    name: OWASP ZAP API Scan (OpenAPI)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: ZAP API Scan
+        uses: zaproxy/action-api-scan@v0.9.0
+        with:
+          target: ${{ env.TARGET_URL }}/openapi.json
+          format: openapi
+          fail_action: true
+          allow_issue_writing: false
+          cmd_options: >-
+            -z "-config scanner.threadPerHost=5"
+
+      - name: Upload ZAP API SARIF report
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: zap_scan_report.sarif
+          category: dast-zap-api
+
+      - name: Upload ZAP API HTML report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: zap-api-report-${{ github.run_id }}
+          path: |
+            zap_scan_report.html
+            zap_scan_report.json
+          retention-days: 30
