@@ -1,5 +1,7 @@
 # The DevOps & Platform Engineer Mindset
 
+# IMPortant to note: If i ask any topic to explain me , then should take the analogy of indian, telangana village analogy and explain in simple english no need of telugu or hindi, english is enough
+
 To transition from **Support** to **Platform Engineering**, use this guide to evaluate every file and resource in this project.
 
 # How These Questions Build Real Engineering Instinct
