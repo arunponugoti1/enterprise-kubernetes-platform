@@ -7,7 +7,23 @@
       "Bash(docker exec enterprise-kubernetes-platform-postgres-1 *)",
       "Bash(git add *)",
       "Bash(git commit -m ' *)",
-      "Bash(git push *)"
+      "Bash(git push *)",
+      "Bash(curl *)",
+      "Bash(netstat -ano)",
+      "Bash(findstr \":5432\")",
+      "Bash(findstr -i \"5432\\\\|15432\\\\|postgres\")",
+      "Bash(Select-String \"5432|15432|port\")",
+      "Bash(del docker-compose.override.yml)",
+      "PowerShell(wsl --status; wsl --list --verbose)",
+      "PowerShell(wsl -d Ubuntu -- bash -c \"lsb_release -a 2>/dev/null; echo '---'; whoami; uname -a\")",
+      "PowerShell(wsl --unregister Ubuntu)",
+      "PowerShell(wsl --shutdown; Start-Sleep -Seconds 2; wsl --unregister Ubuntu)",
+      "PowerShell(wsl --install -d Ubuntu-24.04 --no-launch)",
+      "PowerShell(wsl --list --verbose; Write-Output '---'; wsl -d Ubuntu-24.04 --user root -- bash -c \"lsb_release -a 2>/dev/null && echo --- && uname -r && echo --- && cat /etc/wsl.conf 2>/dev/null; echo done\")",
+      "PowerShell(wsl -d Ubuntu-24.04 --user root -- bash -c \"ls /mnt/c | head -20; echo '---DISK---'; df -h; echo '---MEM---'; free -h; echo '---CPU---'; nproc; lscpu | grep 'Model name'\")",
+      "Bash(grep -oP '\"type\":\"user\"[^}]*\"content\":\"[^\"]{1,300}' \"C:\\\\Users\\\\ponug\\\\.claude\\\\projects\\\\C--Users-ponug\\\\4d2a6d24-1761-497c-94ba-651497266507.jsonl\")",
+      "Bash(grep *)",
+      "PowerShell(& \"C:\\\\Users\\\\ponug\\\\Scripts\\\\Daily-Cleanup.ps1\" -WhatIf)"
     ]
   }
 }

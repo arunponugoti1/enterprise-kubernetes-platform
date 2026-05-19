@@ -331,3 +331,6 @@ To also delete the database data (start fresh):
 ```bash
 docker compose down -v
 ```
+docker compose ps
+docker compose volumes
+
